@@ -59,6 +59,50 @@
             return true;
         }
 
+        public bool StartCourse(Guid guidTeacher)
+        {
+            if (IsLocked())
+                return false;
+
+            if (_peoples.Count < 2)
+                return false;
+
+            People? p = FindPeople(guidTeacher);
+
+            if (p == null)
+                return false;
+
+            if (!p.IsTeacher())
+                return false;
+
+            _mode = RoomMode.Locked;
+            return true;
+        }
+
+        public bool EndCourse(Guid guidTeacher)
+        {
+            if (!IsLocked())
+                return false;
+
+            People? p = FindPeople(guidTeacher);
+
+            if (p == null)
+                return false;
+
+            if (!p.IsTeacher())
+                return false;
+
+            _peoples.RemoveAll(x => !x.IsTeacher());
+
+            _mode = RoomMode.Open;
+            return true;
+        }
+
+        public bool IsLocked()
+        {
+            return _mode == RoomMode.Locked;
+        }
+
         private bool HasTeacher()
         {
             foreach (People p in _peoples)

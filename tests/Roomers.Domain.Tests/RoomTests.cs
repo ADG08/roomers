@@ -72,7 +72,6 @@ namespace Roomers.Domain.Tests
         public void JoinRoom_StudentInEmptyRoom_ReturnsTrue()
         {
             People student = new People(Guid.NewGuid(), "Andre Domingues Ramos", PeopleType.Student);
-
             Assert.True(_room.JoinRoom(student));
         }
 
@@ -80,6 +79,81 @@ namespace Roomers.Domain.Tests
         public void Constructor_CapacityBelowMinimum_Throws()
         {
             Assert.Throws<ArgumentOutOfRangeException>(() => new Room("Salle 2", 5));
+        }
+
+        [Fact]
+        public void StartCourse_TeacherInside_ReturnsTrueAndLocksRoom()
+        {
+            People teacher = new People(Guid.NewGuid(), "Professeur Morin", PeopleType.Teacher);
+            Assert.True(_room.JoinRoom(teacher));
+
+            People student = new People(Guid.NewGuid(), "Andre Domingues Ramos", PeopleType.Student);
+            Assert.True(_room.JoinRoom(student));
+
+            Assert.True(_room.StartCourse(teacher.Id));
+            Assert.True(_room.IsLocked());
+
+        }
+
+        [Fact]
+        public void StartCourse_Student_ReturnsFalse()
+        {
+            People student = new People(Guid.NewGuid(), "Andre Domingues Ramos", PeopleType.Student);
+            Assert.True(_room.JoinRoom(student));
+
+            People p = new People(Guid.NewGuid(), $"Student 1", PeopleType.Student);
+            Assert.True(_room.JoinRoom(p));
+
+            Assert.False(_room.StartCourse(student.Id));
+            Assert.False(_room.IsLocked());
+        }
+
+        [Fact]
+        public void StartCourse_AlreadyStarted_ReturnsFalse()
+        {
+            People teacher = new People(Guid.NewGuid(), "Professeur Morin", PeopleType.Teacher);
+            Assert.True(_room.JoinRoom(teacher));
+
+            People student = new People(Guid.NewGuid(), "Andre Domingues Ramos", PeopleType.Student);
+            Assert.True(_room.JoinRoom(student));
+
+            Assert.True(_room.StartCourse(teacher.Id));
+            Assert.True(_room.IsLocked());
+
+            Assert.False(_room.StartCourse(teacher.Id));
+        }
+
+        [Fact]
+        public void EndCourse_AfterStart_RemovesStudentsKeepsTeacher()
+        {
+            People teacher = new People(Guid.NewGuid(), "Professeur Morin", PeopleType.Teacher);
+            Assert.True(_room.JoinRoom(teacher));
+
+            People student = new People(Guid.NewGuid(), "Andre Domingues Ramos", PeopleType.Student);
+            Assert.True(_room.JoinRoom(student));
+            Assert.False(_room.JoinRoom(student));
+
+
+            Assert.True(_room.StartCourse(teacher.Id));
+            Assert.True(_room.IsLocked());
+
+            Assert.True(_room.EndCourse(teacher.Id));
+            Assert.False(_room.IsLocked());
+
+            Assert.False(_room.JoinRoom(teacher));
+            Assert.True(_room.JoinRoom(student));
+        }
+
+        [Fact]
+        public void EndCourse_NotStarted_ReturnsFalse()
+        {
+            People teacher = new People(Guid.NewGuid(), "Professeur Morin", PeopleType.Teacher);
+            Assert.True(_room.JoinRoom(teacher));
+
+            People student = new People(Guid.NewGuid(), "Andre Domingues Ramos", PeopleType.Student);
+            Assert.True(_room.JoinRoom(student));
+
+            Assert.False(_room.EndCourse(teacher.Id));
         }
     }
 }
