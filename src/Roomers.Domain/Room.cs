@@ -55,6 +55,9 @@
             if (peopleToRemove == null)
                 return false;
 
+            if (peopleToRemove.IsTeacher() && IsLocked())
+                ReopenAfterCourse();
+
             _peoples.Remove(peopleToRemove);
             return true;
         }
@@ -92,10 +95,14 @@
             if (!p.IsTeacher())
                 return false;
 
-            _peoples.RemoveAll(x => !x.IsTeacher());
-
-            _mode = RoomMode.Open;
+            ReopenAfterCourse();
             return true;
+        }
+
+        private void ReopenAfterCourse()
+        {
+            _peoples.RemoveAll(x => !x.IsTeacher());
+            _mode = RoomMode.Open;
         }
 
         public bool IsLocked()
