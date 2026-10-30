@@ -1,4 +1,5 @@
 # Protocole Roomers
+
 ## Qui parle à qui
 
 Le client Rust envoie des messages au serveur .NET. Le serveur applique les règles de la salle, puis prévient le dashboard Angular à chaque changement.
@@ -13,6 +14,7 @@ Un message par ligne, en JSON, en TCP.
 - Le professeur entre.
 - Le professeur sort.
 - Le professeur lance le cours pour tant de secondes.
+- Le professeur arrête le cours avant la fin.
 
 Chaque message dit aussi dans quelle salle ça se passe et à quelle heure. Le serveur ne répond pas au client : il décide tout seul.
 
@@ -20,13 +22,13 @@ Chaque message dit aussi dans quelle salle ça se passe et à quelle heure. Le ser
 
 Tous les messages ont les mêmes champs de base :
 
-| Champ  | Sens                                                        |
-|--------|-------------------------------------------------------------|
-| `type` | ce qui s'est passé (voir plus bas)                          |
-| `room` | le nom de la salle                                          |
+| Champ  | Sens                                                             |
+|--------|------------------------------------------------------------------|
+| `type` | ce qui s'est passé (voir plus bas)                               |
+| `room` | le nom de la salle                                               |
 | `ts`   | l'heure de l'événement, en ISO 8601 UTC (`2026-10-27T13:30:00Z`) |
 
-Les identifiants (`student_id`, `teacher_id`) sont des `Guid` écrits en texte, par exemple `3f2504e0-4f89-11d3-9a0c-0305e82c3301`. Un identifiant vide (`00000000-0000-0000-0000-000000000000`) est refusé.
+Les identifiants (`student_id`, `teacher_id`) sont des `Guid` écrits en texte, par exemple `3f2504e0-4f89-11d3-9a0c-0305e82c3301`. C'est le client qui les génère. Un identifiant vide (`00000000-0000-0000-0000-000000000000`) est refusé.
 
 ## Les messages
 
@@ -70,6 +72,18 @@ Le professeur lance le cours. `duration_seconds` doit être supérieur à 0.
 {"type":"class_started","room":"Salle 1","ts":"2026-10-27T13:31:00Z","teacher_id":"9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d","duration_seconds":3600}
 ```
 
+### `class_ended`
+
+Le professeur arrête son cours avant la fin du temps prévu.
+
+```json
+{"type":"class_ended","room":"Salle 1","ts":"2026-10-27T13:50:00Z","teacher_id":"9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"}
+```
+
+## Les salles
+
+Les salles sont déclarées dans la configuration du serveur : un nom et une capacité pour chacune. Un message qui vise une salle inconnue est ignoré.
+
 ## Les règles de la salle
 
 ### Les places
@@ -87,7 +101,9 @@ Le professeur lance le cours. `duration_seconds` doit être supérieur à 0.
 - Il faut au moins deux personnes dans la salle pour lancer le cours (le professeur et un étudiant).
 - On ne peut pas lancer un cours déjà en cours.
 - Une fois le cours lancé, plus personne ne peut entrer. Les étudiants peuvent encore partir.
-- Quand le temps est écoulé, tous les étudiants sortent automatiquement. Le professeur reste et peut relancer un cours.
+- Si le professeur quitte la salle pendant un cours, le cours s’arrête : les étudiants sortent et la salle se rouvre.
+- Le serveur lance un minuteur au début du cours. Quand le temps est écoulé, ou quand le professeur arrête le cours, tous les étudiants sortent automatiquement. Le professeur reste et peut relancer un cours.
+- Le serveur ne prévient pas le client de cette fin : les `student_active` envoyés pour un étudiant qui n'est plus dans la salle sont ignorés, et un étudiant peut revenir avec un nouveau `student_joined` une fois la salle rouverte.
 
 ## Ce que le serveur dit au dashboard
 
@@ -100,17 +116,4 @@ Le professeur lance le cours. `duration_seconds` doit être supérieur à 0.
 
 ## Si le message est mauvais
 
-JSON cassé, champ manquant, type inconnu, identifiant invalide, entrée pendant un cours : le serveur l'ignore, note l'erreur dans ses logs, et continue sans couper la connexion.
-
-## À voir
-
-Des choix pas encore faits, je les tranche en avançant.
-
-- **Fin du cours.** Le domaine sait terminer un cours (`EndCourse`), mais c'est le serveur qui aura un minuteur et qui l'appellera quand la durée est écoulée. À confirmer.
-- **Arrêt anticipé.** Le professeur peut-il finir son cours avant la fin ? Si oui, un message `class_ended`.
-- **Le professeur part pendant le cours.** Le cours continue-t-il ? S'arrête-t-il ? Aujourd'hui la règle ne dit rien.
-- **Un `student_active` d'un étudiant inconnu.** Ignoré, ou considéré comme une entrée ?
-- **Ce que voit le client Rust à la fin d'un cours.** Les étudiants sont sortis côté serveur : le client doit-il en être prévenu, vu que le serveur ne répond pas ?
-- **Créer une salle.** Qui choisit son nom et sa capacité ? Un fichier de configuration, ou à la première connexion ?
-- **Les identifiants.** Qui les génère : le client ou le serveur ?
-- **Historique des cours.** Quand la base de données arrivera, que garde-t-on d'un cours terminé (durée, étudiants présents) ?
+JSON cassé, champ manquant, type inconnu, identifiant invalide, salle inconnue, entrée pendant un cours : le serveur l'ignore, note l'erreur dans ses logs, et continue sans couper la connexion.
