@@ -7,11 +7,13 @@ namespace Roomers.Server
     {
         private readonly ILogger<TcpServerService> _logger;
         private readonly IConfiguration _config;
+        private readonly RoomEventHandler _handler;
 
-        public TcpServerService(ILogger<TcpServerService> logger, IConfiguration config)
+        public TcpServerService(ILogger<TcpServerService> logger, IConfiguration config, RoomEventHandler handler)
         {
             _logger = logger;
             _config = config;
+            _handler = handler;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -54,7 +56,12 @@ namespace Roomers.Server
                     while ((line = await reader.ReadLineAsync(ct)) != null)
                     {
                         if (EventParser.TryParse(line, out RoomEvent? ev, out string? error))
-                            _logger.LogInformation("Evenement recu : {Event}", ev);
+                        {
+                            if (_handler.TryHandle(ev!, out string? handleError))
+                                _logger.LogInformation("Evenement accepte : {Event}", ev);
+                            else
+                                _logger.LogWarning("Evenement refuse : {Error} ({Event})", handleError, ev);
+                        }
                         else
                             _logger.LogWarning("Message ignore : {Error}", error);
                     }
