@@ -99,6 +99,15 @@
             return true;
         }
 
+        public bool ExpireCourse()
+        {
+            if (!IsLocked())
+                return false;
+
+            ReopenAfterCourse();
+            return true;
+        }
+
         private void ReopenAfterCourse()
         {
             _peoples.RemoveAll(x => !x.IsTeacher());
