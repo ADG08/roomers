@@ -1,13 +1,17 @@
-﻿namespace Roomers.Server.Tests
+﻿using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
+
+namespace Roomers.Server.Tests
 {
     public class RoomEventHandlerTests
     {
         private readonly RoomEventHandler _handler;
+        private readonly FakeTimeProvider _time = new FakeTimeProvider();
 
         public RoomEventHandlerTests()
         {
             RoomRegistry registry = new RoomRegistry(new[] { new RoomConfig("Salle 1", 15) });
-            _handler = new RoomEventHandler(registry);
+            _handler = new RoomEventHandler(registry, _time, NullLogger<RoomEventHandler>.Instance);
         }
 
         [Fact]
@@ -136,6 +140,26 @@
             Assert.True(_handler.TryHandle(fourth, out string? error4));
             Assert.True(_handler.TryHandle(fifth, out string? error5));
             Assert.True(_handler.TryHandle(sixth, out string? error6));
+        }
+
+        [Fact]
+        public void TryHandle_ClassStarted_CourseExpiresAfterDuration()
+        {
+            Guid teacher = Guid.NewGuid();
+            RoomEvent first = new TeacherJoined("Salle 1", DateTime.UtcNow, teacher, "Professeur Morin");
+            RoomEvent second = new StudentJoined("Salle 1", DateTime.UtcNow, Guid.NewGuid(), "Andre Domingues Ramos");
+            RoomEvent third = new ClassStarted("Salle 1", DateTime.UtcNow, teacher, 300);
+
+            Assert.True(_handler.TryHandle(first, out string? error1));
+            Assert.True(_handler.TryHandle(second, out string? error2));
+            Assert.True(_handler.TryHandle(third, out string? error3));
+
+            RoomEvent fourth = new StudentJoined("Salle 1", DateTime.UtcNow, Guid.NewGuid(), "Retardataire");
+            Assert.False(_handler.TryHandle(fourth, out string? error4));
+            
+            _time.Advance(TimeSpan.FromSeconds(300));
+
+            Assert.True(_handler.TryHandle(fourth, out string? error5));
         }
     }
 }

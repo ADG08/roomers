@@ -1,14 +1,21 @@
 ﻿using Roomers.Domain;
+using System.Collections.Concurrent;
 
 namespace Roomers.Server
 {
     public class RoomEventHandler
     {
         private readonly RoomRegistry _registry;
+        private readonly TimeProvider _time;
+        private readonly ConcurrentDictionary<string, ITimer> _timers = new();
+        private readonly ILogger<RoomEventHandler> _logger;
 
-        public RoomEventHandler(RoomRegistry registry)
+
+        public RoomEventHandler(RoomRegistry registry, TimeProvider time, ILogger<RoomEventHandler> logger)
         {
             _registry = registry;
+            _time = time;
+            _logger = logger;
         }
 
         public bool TryHandle(RoomEvent ev, out string? error)
@@ -34,12 +41,59 @@ namespace Roomers.Server
                     ClassEnded e => room.EndCourse(e.TeacherId),
                     _ => false
                 };
+
+                if (accepted)
+                    UpdateTimer(ev, room);
             }
 
             if (!accepted)
                 error = "Action refusée par la salle";
 
             return accepted;
+        }
+        private void UpdateTimer(RoomEvent ev, Room room)
+        {
+            switch (ev)
+            {
+                case ClassStarted e:
+                    StartTimer(room, e.Room, e.DurationSeconds);
+                    break;
+                case ClassEnded:
+                case TeacherLeft:
+                    StopTimer(ev.Room);
+                    break;
+            }
+        }
+
+        private void StartTimer(Room room, string roomName, int seconds)
+        {
+            StopTimer(roomName);
+            ITimer timer = _time.CreateTimer(
+                _ => OnCourseExpired(room, roomName),
+                null,
+                TimeSpan.FromSeconds(seconds),
+                Timeout.InfiniteTimeSpan);
+            _timers[roomName] = timer;
+        }
+
+        private void StopTimer(string roomName)
+        {
+            if (_timers.TryRemove(roomName, out ITimer? timer))
+                timer.Dispose();
+        }   
+
+        private void OnCourseExpired(Room room, string roomName)
+        {
+            bool expired;
+            lock (room)
+            {
+                expired = room.ExpireCourse();
+            }
+
+            if (expired)
+                _logger.LogInformation("Cours termine dans {Room} (temps ecoule)", roomName);
+
+            StopTimer(roomName);
         }
     }
 }
