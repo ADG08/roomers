@@ -39,6 +39,7 @@ namespace Roomers.Server
                     StudentLeft e => room.LeaveRoom(e.StudentId),
                     ClassStarted e => room.StartCourse(e.TeacherId),
                     ClassEnded e => room.EndCourse(e.TeacherId),
+                    StudentActive => true,
                     _ => false
                 };
 
@@ -88,12 +89,12 @@ namespace Roomers.Server
             lock (room)
             {
                 expired = room.ExpireCourse();
+                StopTimer(roomName);
             }
 
             if (expired)
                 _logger.LogInformation("Cours termine dans {Room} (temps ecoule)", roomName);
 
-            StopTimer(roomName);
         }
     }
 }

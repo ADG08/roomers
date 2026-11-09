@@ -161,5 +161,48 @@ namespace Roomers.Server.Tests
 
             Assert.True(_handler.TryHandle(fourth, out string? error5));
         }
+
+        [Fact]
+        public void TryHandle_StudentActive_ReturnsTrue()
+        {
+            Guid student = Guid.NewGuid();
+            RoomEvent first = new StudentJoined("Salle 1", DateTime.UtcNow, student, "Andre Domingues Ramos");
+            RoomEvent second = new StudentActive("Salle 1", DateTime.UtcNow, student);
+
+            Assert.True(_handler.TryHandle(first, out string? error1));
+            Assert.True(_handler.TryHandle(second, out string? error2));
+            Assert.Null(error2);
+        }
+
+        [Fact]
+        public void TryHandle_ClassEndedBeforeDuration_OldTimerDoesNotCloseNextCourse()
+        {
+            Guid teacher = Guid.NewGuid();
+            RoomEvent first = new TeacherJoined("Salle 1", DateTime.UtcNow, teacher, "Professeur Morin");
+            RoomEvent second = new StudentJoined("Salle 1", DateTime.UtcNow, Guid.NewGuid(), "Andre Domingues Ramos");
+            RoomEvent third = new ClassStarted("Salle 1", DateTime.UtcNow, teacher, 300);
+            RoomEvent fourth = new ClassEnded("Salle 1", DateTime.UtcNow, teacher);
+            RoomEvent fifth = new StudentJoined("Salle 1", DateTime.UtcNow, Guid.NewGuid(), "Andre Domingues Ramos 2");
+            RoomEvent sixth = new ClassStarted("Salle 1", DateTime.UtcNow, teacher, 300);
+            RoomEvent seventh = new StudentJoined("Salle 1", DateTime.UtcNow, Guid.NewGuid(), "Retardataire");
+
+            Assert.True(_handler.TryHandle(first, out string? error1));
+            Assert.True(_handler.TryHandle(second, out string? error2));
+            Assert.True(_handler.TryHandle(third, out string? error3));
+
+            _time.Advance(TimeSpan.FromSeconds(200));
+
+            Assert.True(_handler.TryHandle(fourth, out string? error4));
+            Assert.True(_handler.TryHandle(fifth, out string? error5));
+            Assert.True(_handler.TryHandle(sixth, out string? error6));
+
+            _time.Advance(TimeSpan.FromSeconds(100));
+
+            Assert.False(_handler.TryHandle(seventh, out string? error7));
+
+            _time.Advance(TimeSpan.FromSeconds(200));
+
+            Assert.True(_handler.TryHandle(seventh, out string? error8));
+        }
     }
 }
