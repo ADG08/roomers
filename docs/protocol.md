@@ -1,34 +1,38 @@
 # Protocole Roomers
 
-## Qui parle à qui
+## Qui parle Ã  qui
 
-Le client Rust envoie des messages au serveur .NET. Le serveur applique les règles de la salle, puis prévient le dashboard Angular à chaque changement.
+Le client Rust envoie des messages au serveur .NET. Le serveur applique les rÃ¨gles de la salle, puis prÃ©vient le dashboard Angular Ã  chaque changement.
 
 ## Ce que le client peut dire au serveur
 
-Un message par ligne, en JSON, en TCP.
+Un message par ligne, en JSON, en TCP (port 9000 par dÃ©faut).
 
-- Un étudiant entre.
-- Un étudiant sort.
-- Cet étudiant est toujours là (signe de vie régulier).
+- Un Ã©tudiant entre.
+- Un Ã©tudiant sort.
+- Cet Ã©tudiant est toujours lÃ  (signe de vie rÃ©gulier).
 - Le professeur entre.
 - Le professeur sort.
 - Le professeur lance le cours pour tant de secondes.
-- Le professeur arrête le cours avant la fin.
+- Le professeur arrÃªte le cours avant la fin.
 
-Chaque message dit aussi dans quelle salle ça se passe et à quelle heure. Le serveur ne répond pas au client : il décide tout seul.
+Chaque message dit aussi dans quelle salle Ã§a se passe et Ã  quelle heure. Le serveur ne rÃ©pond pas au client : il dÃ©cide tout seul. La connexion reste ouverte tant que le client ne la ferme pas.
 
 ## Format d'un message
 
-Tous les messages ont les mêmes champs de base :
+Tous les messages ont les mÃªmes champs de base :
 
-| Champ  | Sens                                                             |
-|--------|------------------------------------------------------------------|
-| `type` | ce qui s'est passé (voir plus bas)                               |
-| `room` | le nom de la salle                                               |
-| `ts`   | l'heure de l'événement, en ISO 8601 UTC (`2026-10-27T13:30:00Z`) |
+| Champ  | Sens                                                                      |
+|--------|---------------------------------------------------------------------------|
+| `type` | ce qui s'est passÃ© (voir plus bas)                                        |
+| `room` | le nom de la salle, jamais vide                                           |
+| `ts`   | l'heure de l'Ã©vÃ©nement, en ISO 8601 UTC (`2026-10-27T13:30:00Z`)          |
 
-Les identifiants (`student_id`, `teacher_id`) sont des `Guid` écrits en texte, par exemple `3f2504e0-4f89-11d3-9a0c-0305e82c3301`. C'est le client qui les génère. Un identifiant vide (`00000000-0000-0000-0000-000000000000`) est refusé.
+Pour `ts`, les fractions de seconde sont acceptÃ©es (`2026-10-27T13:30:00.123456Z`).
+
+Les identifiants (`student_id`, `teacher_id`) sont des `Guid` Ã©crits en texte, par exemple `3f2504e0-4f89-11d3-9a0c-0305e82c3301`. C'est le client qui les gÃ©nÃ¨re. Un identifiant vide (`00000000-0000-0000-0000-000000000000`) est refusÃ©.
+
+Le champ `name` (Ã©tudiant ou professeur qui entre) ne peut pas Ãªtre vide.
 
 ## Les messages
 
@@ -46,7 +50,7 @@ Les identifiants (`student_id`, `teacher_id`) sont des `Guid` écrits en texte, p
 
 ### `student_active`
 
-Signe de vie régulier d'un étudiant déjà présent.
+Signe de vie rÃ©gulier d'un Ã©tudiant. Le serveur l'accepte et ne change rien Ã  la salle.
 
 ```json
 {"type":"student_active","room":"Salle 1","ts":"2026-10-27T13:35:00Z","student_id":"3f2504e0-4f89-11d3-9a0c-0305e82c3301"}
@@ -66,7 +70,7 @@ Signe de vie régulier d'un étudiant déjà présent.
 
 ### `class_started`
 
-Le professeur lance le cours. `duration_seconds` doit être supérieur à 0.
+Le professeur lance le cours. `duration_seconds` doit Ãªtre supÃ©rieur Ã  0.
 
 ```json
 {"type":"class_started","room":"Salle 1","ts":"2026-10-27T13:31:00Z","teacher_id":"9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d","duration_seconds":3600}
@@ -74,7 +78,7 @@ Le professeur lance le cours. `duration_seconds` doit être supérieur à 0.
 
 ### `class_ended`
 
-Le professeur arrête son cours avant la fin du temps prévu.
+Le professeur arrÃªte son cours avant la fin du temps prÃ©vu.
 
 ```json
 {"type":"class_ended","room":"Salle 1","ts":"2026-10-27T13:50:00Z","teacher_id":"9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"}
@@ -82,38 +86,44 @@ Le professeur arrête son cours avant la fin du temps prévu.
 
 ## Les salles
 
-Les salles sont déclarées dans la configuration du serveur : un nom et une capacité pour chacune. Un message qui vise une salle inconnue est ignoré.
+Les salles sont dÃ©clarÃ©es dans la configuration du serveur (`appsettings.json`) : un nom et une capacitÃ© pour chacune, ainsi que le port d'Ã©coute.
 
-## Les règles de la salle
+```json
+"Tcp": { "Port": 9000 },
+"Rooms": [
+  { "Name": "Salle 1", "MaxCapacity": 15 },
+  { "Name": "Salle 2", "MaxCapacity": 20 }
+]
+```
+
+Un message qui vise une salle inconnue est refusÃ©.
+
+## Les rÃ¨gles de la salle
 
 ### Les places
 
-- Une salle a une capacité d'au moins 10 places.
-- Une personne ne peut pas entrer deux fois (même identifiant).
+- Une salle a une capacitÃ© d'au moins 10 places.
+- Une personne ne peut pas entrer deux fois (mÃªme identifiant).
 - Il n'y a qu'un seul professeur par salle.
-- La dernière place est réservée au professeur : tant qu'il n'est pas là, un étudiant ne peut pas la prendre.
+- La derniÃ¨re place est rÃ©servÃ©e au professeur : tant qu'il n'est pas lÃ , un Ã©tudiant ne peut pas la prendre.
 - Une salle pleine refuse tout le monde.
+- Seul un message de dÃ©part fait sortir une personne : si sa connexion se coupe, elle reste dans la salle.
 
 ### Le cours
 
-- Tant que le cours n'est pas lancé, la salle est ouverte : on peut entrer et sortir.
-- Seul le professeur présent peut lancer le cours.
-- Il faut au moins deux personnes dans la salle pour lancer le cours (le professeur et un étudiant).
-- On ne peut pas lancer un cours déjà en cours.
-- Une fois le cours lancé, plus personne ne peut entrer. Les étudiants peuvent encore partir.
-- Si le professeur quitte la salle pendant un cours, le cours s’arrête : les étudiants sortent et la salle se rouvre.
-- Le serveur lance un minuteur au début du cours. Quand le temps est écoulé, ou quand le professeur arrête le cours, tous les étudiants sortent automatiquement. Le professeur reste et peut relancer un cours.
-- Le serveur ne prévient pas le client de cette fin : les `student_active` envoyés pour un étudiant qui n'est plus dans la salle sont ignorés, et un étudiant peut revenir avec un nouveau `student_joined` une fois la salle rouverte.
-
-## Ce que le serveur dit au dashboard
-
-À chaque changement :
-
-- la salle est-elle ouverte ou en cours,
-- quand le cours se termine,
-- quel professeur est là,
-- quels étudiants sont présents, et quand on les a vus pour la dernière fois.
+- Tant que le cours n'est pas lancÃ©, la salle est ouverte : on peut entrer et sortir. Si le professeur part avant le cours, les Ã©tudiants restent.
+- Seul le professeur prÃ©sent peut lancer le cours.
+- Il faut au moins deux personnes dans la salle pour lancer le cours (le professeur et un Ã©tudiant).
+- On ne peut pas lancer un cours dÃ©jÃ  en cours.
+- Une fois le cours lancÃ©, plus personne ne peut entrer. Les Ã©tudiants peuvent encore partir.
+- Seul le professeur prÃ©sent peut arrÃªter le cours avec `class_ended`.
+- Si le professeur quitte la salle pendant un cours, le cours s'arrÃªte : les Ã©tudiants sortent, le professeur est parti et la salle se rouvre.
+- Le serveur lance un minuteur de `duration_seconds` au dÃ©but du cours. Quand le temps est Ã©coulÃ©, tous les Ã©tudiants sortent automatiquement et la salle se rouvre. Le professeur reste et peut relancer un cours. Si le professeur arrÃªte le cours avant la fin, ou s'il part, le minuteur est annulÃ©.
+- Le serveur ne prÃ©vient pas le client de la fin du cours. Un Ã©tudiant peut revenir avec un nouveau `student_joined` une fois la salle rouverte.
 
 ## Si le message est mauvais
 
-JSON cassé, champ manquant, type inconnu, identifiant invalide, salle inconnue, entrée pendant un cours : le serveur l'ignore, note l'erreur dans ses logs, et continue sans couper la connexion.
+Deux cas, que le serveur note dans ses logs, sans couper la connexion :
+
+- **Message ignorÃ©** : JSON cassÃ©, champ manquant, type inconnu, identifiant invalide ou vide, nom vide, `duration_seconds` Ã  0 ou nÃ©gatif.
+- **Ã‰vÃ©nement refusÃ©** : le message est correct mais la salle ne l'accepte pas. Par exemple : salle inconnue, entrÃ©e pendant un cours, personne dÃ©jÃ  prÃ©sente, salle pleine, second professeur, cours lancÃ© par un Ã©tudiant, dÃ©part d'une personne absente.
