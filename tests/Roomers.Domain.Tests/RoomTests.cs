@@ -370,5 +370,54 @@ namespace Roomers.Domain.Tests
             Assert.Equal("Andre Domingues Ramos", snapshot.Students[0].Name);
             Assert.Equal(student2.Id, snapshot.Students[1].Id);
         }
+
+        [Fact]
+        public void GetSnapshot_DuringCourse_IsLocked()
+        {
+            People teacher = new People(Guid.NewGuid(), "Professeur Morin", PeopleType.Teacher);
+            People student = new People(Guid.NewGuid(), "Andre Domingues Ramos", PeopleType.Student);
+
+            Assert.True(_room.JoinRoom(teacher));
+            Assert.True(_room.JoinRoom(student));
+            Assert.True(_room.StartCourse(teacher.Id));
+
+            RoomSnapshot snapshot = _room.GetSnapshot();
+
+            Assert.True(snapshot.IsLocked);
+        }
+
+        [Fact]
+        public void GetSnapshot_AfterExpireCourse_KeepsTeacherOnly()
+        {
+            People teacher = new People(Guid.NewGuid(), "Professeur Morin", PeopleType.Teacher);
+            People student = new People(Guid.NewGuid(), "Andre Domingues Ramos", PeopleType.Student);
+
+            Assert.True(_room.JoinRoom(teacher));
+            Assert.True(_room.JoinRoom(student));
+            Assert.True(_room.StartCourse(teacher.Id));
+            Assert.True(_room.ExpireCourse());
+
+            RoomSnapshot snapshot = _room.GetSnapshot();
+
+            Assert.False(snapshot.IsLocked);
+            Assert.NotNull(snapshot.Teacher);
+            Assert.Equal(teacher.Id, snapshot.Teacher.Id);
+            Assert.Empty(snapshot.Students);
+        }
+
+        [Fact]
+        public void GetSnapshot_IsACopy()
+        {
+            People teacher = new People(Guid.NewGuid(), "Professeur Morin", PeopleType.Teacher);
+            People student = new People(Guid.NewGuid(), "Andre Domingues Ramos", PeopleType.Student);
+
+            Assert.True(_room.JoinRoom(teacher));
+            RoomSnapshot before = _room.GetSnapshot();
+
+            Assert.True(_room.JoinRoom(student));
+
+            Assert.Empty(before.Students);
+            Assert.Single(_room.GetSnapshot().Students);
+        }
     }
 }
