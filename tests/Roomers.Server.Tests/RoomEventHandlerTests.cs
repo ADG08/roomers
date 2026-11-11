@@ -7,11 +7,12 @@ namespace Roomers.Server.Tests
     {
         private readonly RoomEventHandler _handler;
         private readonly FakeTimeProvider _time = new FakeTimeProvider();
+        private readonly FakeRoomNotifier _notifier = new FakeRoomNotifier();
 
         public RoomEventHandlerTests()
         {
             RoomRegistry registry = new RoomRegistry(new[] { new RoomConfig("Salle 1", 15) });
-            _handler = new RoomEventHandler(registry, _time, NullLogger<RoomEventHandler>.Instance);
+            _handler = new RoomEventHandler(registry, _time, NullLogger<RoomEventHandler>.Instance, _notifier);
         }
 
         [Fact]
@@ -203,6 +204,49 @@ namespace Roomers.Server.Tests
             _time.Advance(TimeSpan.FromSeconds(200));
 
             Assert.True(_handler.TryHandle(seventh, out string? error8));
+        }
+
+        [Fact]
+        public void TryHandle_AcceptedEvent_NotifiesRoomSnapshot()
+        {
+            Guid teacher = Guid.NewGuid();
+            RoomEvent first = new TeacherJoined("Salle 1", DateTime.UtcNow, teacher, "Professeur Morin");
+
+            Assert.True(_handler.TryHandle(first, out string? error1));
+
+            Assert.Single(_notifier.Snapshots);
+            Assert.Equal("Salle 1", _notifier.Snapshots[0].Name);
+            Assert.NotNull(_notifier.Snapshots[0].Teacher);
+            Assert.Equal(teacher, _notifier.Snapshots[0].Teacher.Id);
+        }
+
+        [Fact]
+        public void TryHandle_RefusedEvent_DoesNotNotify()
+        {
+            RoomEvent first = new StudentLeft("Salle 1", DateTime.UtcNow, Guid.NewGuid());
+
+            Assert.False(_handler.TryHandle(first, out string? error1));
+
+            Assert.Empty(_notifier.Snapshots);
+        }
+
+        [Fact]
+        public void TryHandle_CourseExpires_NotifiesUnlockedSnapshot()
+        {
+            Guid teacher = Guid.NewGuid();
+            RoomEvent first = new TeacherJoined("Salle 1", DateTime.UtcNow, teacher, "Professeur Morin");
+            RoomEvent second = new StudentJoined("Salle 1", DateTime.UtcNow, Guid.NewGuid(), "Andre Domingues Ramos");
+            RoomEvent third = new ClassStarted("Salle 1", DateTime.UtcNow, teacher, 300);
+
+            Assert.True(_handler.TryHandle(first, out string? error1));
+            Assert.True(_handler.TryHandle(second, out string? error2));
+            Assert.True(_handler.TryHandle(third, out string? error3));
+            Assert.True(_notifier.Snapshots[^1].IsLocked);
+
+            _time.Advance(TimeSpan.FromSeconds(300));
+
+            Assert.False(_notifier.Snapshots[^1].IsLocked);
+            Assert.Empty(_notifier.Snapshots[^1].Students);
         }
     }
 }

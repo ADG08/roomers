@@ -9,13 +9,14 @@ namespace Roomers.Server
         private readonly TimeProvider _time;
         private readonly ConcurrentDictionary<string, ITimer> _timers = new();
         private readonly ILogger<RoomEventHandler> _logger;
+        private readonly IRoomNotifier _notifier;
 
-
-        public RoomEventHandler(RoomRegistry registry, TimeProvider time, ILogger<RoomEventHandler> logger)
+        public RoomEventHandler(RoomRegistry registry, TimeProvider time, ILogger<RoomEventHandler> logger, IRoomNotifier notifier)
         {
             _registry = registry;
             _time = time;
             _logger = logger;
+            _notifier = notifier;
         }
 
         public bool TryHandle(RoomEvent ev, out string? error)
@@ -44,7 +45,12 @@ namespace Roomers.Server
                 };
 
                 if (accepted)
+                {
                     UpdateTimer(ev, room);
+
+                    if (ev is not StudentActive)
+                        _notifier.RoomChanged(room.GetSnapshot());
+                }
             }
 
             if (!accepted)
@@ -81,7 +87,7 @@ namespace Roomers.Server
         {
             if (_timers.TryRemove(roomName, out ITimer? timer))
                 timer.Dispose();
-        }   
+        }
 
         private void OnCourseExpired(Room room, string roomName)
         {
@@ -90,11 +96,13 @@ namespace Roomers.Server
             {
                 expired = room.ExpireCourse();
                 StopTimer(roomName);
+
+                if (expired)
+                    _notifier.RoomChanged(room.GetSnapshot());
             }
 
             if (expired)
                 _logger.LogInformation("Cours termine dans {Room} (temps ecoule)", roomName);
-
         }
     }
 }

@@ -20,6 +20,7 @@ fn main() {
     let teacher_id = Uuid::new_v4();
     let first_student_id = Uuid::new_v4();
     let second_student_id = Uuid::new_v4();
+    let late_student_id = Uuid::new_v4();
 
     let first_event = Event::TeacherJoined {
         room: "Salle 1".to_string(),
@@ -49,19 +50,6 @@ fn main() {
         duration_seconds: 10,
     };
 
-    let fifth_event = Event::StudentJoined {
-        room: "Salle 1".to_string(),
-        ts: Utc::now(),
-        student_id: Uuid::new_v4(),
-        name: "Andre Domingues Ramos 3".to_string(),
-    };
-    
-    let sixth_event = Event::TeacherLeft {
-        room: "Salle 1".to_string(),
-        ts: Utc::now(),
-        teacher_id: teacher_id,
-    };
-
     send(&mut stream, &first_event);
     send(&mut stream, &second_event);
     send(&mut stream, &third_event);
@@ -88,7 +76,27 @@ fn main() {
 
     sleep(Duration::from_secs(3));
 
+    let fifth_event = Event::StudentJoined {
+        room: "Salle 1".to_string(),
+        ts: Utc::now(),
+        student_id: late_student_id,
+        name: "Andre Domingues Ramos 3".to_string(),
+    };
+
+    let sixth_event = Event::StudentLeft {
+        room: "Salle 1".to_string(),
+        ts: Utc::now(),
+        student_id: late_student_id,
+    };
+
+    let seventh_event = Event::TeacherLeft {
+        room: "Salle 1".to_string(),
+        ts: Utc::now(),
+        teacher_id: teacher_id,
+    };
+
     send(&mut stream, &fifth_event);
     send(&mut stream, &sixth_event);
+    send(&mut stream, &seventh_event);
     println!("Scenario termine");
 }
