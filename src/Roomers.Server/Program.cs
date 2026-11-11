@@ -10,5 +10,19 @@ builder.Services.AddSingleton<IRoomNotifier, LogRoomNotifier>();
 builder.Services.AddSingleton<RoomEventHandler>();
 builder.Services.AddHostedService<TcpServerService>();
 
+builder.Services.AddSignalR();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+            policy.WithOrigins("http://localhost:4200")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials());
+});
+
 var app = builder.Build();
+
+app.UseCors();
+app.MapHub<RoomsHub>("/hub/rooms");
+
 app.Run();
