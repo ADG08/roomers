@@ -19,5 +19,20 @@ namespace Roomers.Server
         {
             return _rooms.TryGetValue(name, out room);
         }
+
+        public IReadOnlyList<RoomSnapshot> GetSnapshots()
+        {
+            List<RoomSnapshot> snapshots = new List<RoomSnapshot>();
+
+            foreach (Room room in _rooms.Values)
+            {
+                lock (room)
+                {
+                    snapshots.Add(room.GetSnapshot());
+                }
+            }
+
+            return snapshots;
+        }
     }
 }
