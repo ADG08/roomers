@@ -3,13 +3,13 @@
     public class People
     {
         public Guid Id { get; private set; }
-        private string _name = string.Empty;
+        public string Name { get; private set; }
         private PeopleType _type;
 
         public People(Guid id, string name, PeopleType type)
         {
             Id = id;
-            _name = name;
+            Name = name;
             _type = type;
         }
 

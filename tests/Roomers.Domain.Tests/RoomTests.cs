@@ -335,5 +335,40 @@ namespace Roomers.Domain.Tests
 
             Assert.False(_room.JoinRoom(student));
         }
+
+        [Fact]
+        public void GetSnapshot_EmptyRoom_IsOpenWithNoOne()
+        {
+            RoomSnapshot snapshot = _room.GetSnapshot();
+
+            Assert.Equal("Salle 1", snapshot.Name);
+            Assert.Equal(Capacity, snapshot.MaxCapacity);
+            Assert.False(snapshot.IsLocked);
+            Assert.Null(snapshot.Teacher);
+            Assert.Empty(snapshot.Students);
+        }
+
+        [Fact]
+        public void GetSnapshot_TeacherAndStudents_ListsEveryone()
+        {
+            People teacher = new People(Guid.NewGuid(), "Professeur Morin", PeopleType.Teacher);
+            People student = new People(Guid.NewGuid(), "Andre Domingues Ramos", PeopleType.Student);
+            People student2 = new People(Guid.NewGuid(), "Andre Domingues Ramos 2", PeopleType.Student);
+
+            Assert.True(_room.JoinRoom(teacher));
+            Assert.True(_room.JoinRoom(student));
+            Assert.True(_room.JoinRoom(student2));
+
+            RoomSnapshot snapshot = _room.GetSnapshot();
+
+            Assert.NotNull(snapshot.Teacher);
+            Assert.Equal(teacher.Id, snapshot.Teacher.Id);
+            Assert.Equal("Professeur Morin", snapshot.Teacher.Name);
+
+            Assert.Equal(2, snapshot.Students.Count);
+            Assert.Equal(student.Id, snapshot.Students[0].Id);
+            Assert.Equal("Andre Domingues Ramos", snapshot.Students[0].Name);
+            Assert.Equal(student2.Id, snapshot.Students[1].Id);
+        }
     }
 }

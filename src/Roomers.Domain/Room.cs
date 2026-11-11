@@ -108,16 +108,35 @@
             return true;
         }
 
+        public bool IsLocked()
+        {
+            return _mode == RoomMode.Locked;
+        }
+
+        public RoomSnapshot GetSnapshot()
+        {
+            PersonInfo? teacher = null;
+            List<PersonInfo> students = new List<PersonInfo>();
+
+            foreach (People p in _peoples)
+            {
+                PersonInfo info = new PersonInfo(p.Id, p.Name);
+
+                if (p.IsTeacher())
+                    teacher = info;
+                else
+                    students.Add(info);
+            }
+
+            return new RoomSnapshot(_name, _maxCapacity, IsLocked(), teacher, students);
+        }
+
         private void ReopenAfterCourse()
         {
             _peoples.RemoveAll(x => !x.IsTeacher());
             _mode = RoomMode.Open;
         }
 
-        public bool IsLocked()
-        {
-            return _mode == RoomMode.Locked;
-        }
 
         private bool HasTeacher()
         {
