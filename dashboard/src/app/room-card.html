@@ -1,0 +1,36 @@
+<section class="flex w-full flex-col gap-3 rounded-xl bg-white p-4 shadow">
+  <div class="flex items-center justify-between">
+    <h2 class="text-lg font-semibold text-slate-800">{{ room().name }}</h2>
+    @if (room().isLocked) {
+      <span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800">
+        Cours en cours
+      </span>
+    } @else {
+      <span class="rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800">
+        Ouverte
+      </span>
+    }
+  </div>
+
+  <p class="text-sm text-slate-500">{{ occupied() }} / {{ room().maxCapacity }} places</p>
+
+  <div>
+    <p class="text-sm font-medium text-slate-600">Professeur</p>
+    @if (room().teacher; as teacher) {
+      <p class="text-slate-800">{{ teacher.name }}</p>
+    } @else {
+      <p class="italic text-slate-400">Aucun professeur</p>
+    }
+  </div>
+
+  <div>
+    <p class="text-sm font-medium text-slate-600">Étudiants ({{ room().students.length }})</p>
+    <ul class="list-disc pl-5 text-slate-800">
+      @for (student of room().students; track student.id) {
+        <li>{{ student.name }}</li>
+      } @empty {
+        <li class="list-none italic text-slate-400">Personne pour l'instant</li>
+      }
+    </ul>
+  </div>
+</section>
