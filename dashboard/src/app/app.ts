@@ -1,12 +1,16 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject, OnInit } from '@angular/core';
+import { JsonPipe } from '@angular/common';
+import { RoomsService } from './rooms.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [JsonPipe],
   templateUrl: './app.html',
-  styleUrl: './app.css'
 })
-export class App {
-  protected readonly title = signal('dashboard');
+export class App implements OnInit {
+  protected readonly roomsService = inject(RoomsService);
+
+  ngOnInit(): void {
+    this.roomsService.start();
+  }
 }
