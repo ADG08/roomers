@@ -248,5 +248,21 @@ namespace Roomers.Server.Tests
             Assert.False(_notifier.Snapshots[^1].IsLocked);
             Assert.Empty(_notifier.Snapshots[^1].Students);
         }
+
+        [Fact]
+        public void TryHandle_ClassStarted_NotifiesSnapshotWithEndTime()
+        {
+            Guid teacher = Guid.NewGuid();
+            RoomEvent first = new TeacherJoined("Salle 1", DateTime.UtcNow, teacher, "Professeur Morin");
+            RoomEvent second = new StudentJoined("Salle 1", DateTime.UtcNow, Guid.NewGuid(), "Andre Domingues Ramos");
+            RoomEvent third = new ClassStarted("Salle 1", DateTime.UtcNow, teacher, 300);
+            DateTimeOffset expected = _time.GetUtcNow().AddSeconds(300);
+
+            Assert.True(_handler.TryHandle(first, out string? error1));
+            Assert.True(_handler.TryHandle(second, out string? error2));
+            Assert.True(_handler.TryHandle(third, out string? error3));
+
+            Assert.Equal(expected, _notifier.Snapshots[^1].CourseEndsAt);
+        }
     }
 }

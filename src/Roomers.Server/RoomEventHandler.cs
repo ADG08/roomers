@@ -38,7 +38,7 @@ namespace Roomers.Server
                     TeacherLeft e => room.LeaveRoom(e.TeacherId),
                     StudentJoined e => room.JoinRoom(new People(e.StudentId, e.Name, PeopleType.Student)),
                     StudentLeft e => room.LeaveRoom(e.StudentId),
-                    ClassStarted e => room.StartCourse(e.TeacherId),
+                    ClassStarted e => room.StartCourse(e.TeacherId, _time.GetUtcNow().AddSeconds(e.DurationSeconds)),
                     ClassEnded e => room.EndCourse(e.TeacherId),
                     StudentActive => true,
                     _ => false

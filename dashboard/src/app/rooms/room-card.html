@@ -13,7 +13,9 @@
   </div>
 
   <p class="text-sm text-slate-500">{{ occupied() }} / {{ room().maxCapacity }} places</p>
-
+  @if (remaining(); as time) {
+    <p class="text-sm font-medium text-amber-700">Il reste {{ time }}</p>
+  }
   <div>
     <p class="text-sm font-medium text-slate-600">Professeur</p>
     @if (room().teacher; as teacher) {

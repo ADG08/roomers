@@ -7,5 +7,6 @@
         int MaxCapacity,
         bool IsLocked,
         PersonInfo? Teacher,
-        IReadOnlyList<PersonInfo> Students);
+        IReadOnlyList<PersonInfo> Students,
+        DateTimeOffset? CourseEndsAt);
 }

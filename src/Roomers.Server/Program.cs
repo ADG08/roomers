@@ -6,7 +6,7 @@ RoomConfig[] rooms = builder.Configuration.GetSection("Rooms").Get<RoomConfig[]>
 
 builder.Services.AddSingleton(new RoomRegistry(rooms));
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<IRoomNotifier, LogRoomNotifier>();
+builder.Services.AddSingleton<IRoomNotifier, SignalRRoomNotifier>();
 builder.Services.AddSingleton<RoomEventHandler>();
 builder.Services.AddHostedService<TcpServerService>();
 

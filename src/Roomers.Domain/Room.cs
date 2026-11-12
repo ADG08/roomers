@@ -1,4 +1,6 @@
-﻿namespace Roomers.Domain
+﻿using System.Security.Cryptography;
+
+namespace Roomers.Domain
 {
     public class Room
     {
@@ -6,6 +8,7 @@
         private RoomMode _mode = RoomMode.Open;
         private readonly int _maxCapacity = 0;
         private readonly List<People> _peoples = new List<People>();
+        private DateTimeOffset? _courseEndsAt;
 
         public Room(string name, int maxCapacity)
         {
@@ -14,8 +17,7 @@
 
             _name = name;
 
-            if (maxCapacity < 10)
-                throw new ArgumentOutOfRangeException(nameof(maxCapacity));
+            ArgumentOutOfRangeException.ThrowIfLessThan(maxCapacity, 10);
 
             _maxCapacity = maxCapacity;
         }
@@ -62,7 +64,7 @@
             return true;
         }
 
-        public bool StartCourse(Guid guidTeacher)
+        public bool StartCourse(Guid guidTeacher, DateTimeOffset? endsAt = null)
         {
             if (IsLocked())
                 return false;
@@ -79,6 +81,8 @@
                 return false;
 
             _mode = RoomMode.Locked;
+            _courseEndsAt = endsAt;
+
             return true;
         }
 
@@ -128,13 +132,14 @@
                     students.Add(info);
             }
 
-            return new RoomSnapshot(_name, _maxCapacity, IsLocked(), teacher, students);
+            return new RoomSnapshot(_name, _maxCapacity, IsLocked(), teacher, students, _courseEndsAt);
         }
 
         private void ReopenAfterCourse()
         {
             _peoples.RemoveAll(x => !x.IsTeacher());
             _mode = RoomMode.Open;
+            _courseEndsAt = null;
         }
 
 

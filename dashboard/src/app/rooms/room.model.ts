@@ -9,4 +9,5 @@ export interface RoomSnapshot {
   isLocked: boolean;
   teacher: PersonInfo | null;
   students: PersonInfo[];
+  courseEndsAt: string | null;
 }
